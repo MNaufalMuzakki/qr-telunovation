@@ -31,7 +31,26 @@ class ExhibitionSystemTest extends TestCase
         $passResponse = $this->get(route('visitor.pass', ['uuid' => $visitor->qr_code_id]));
         $passResponse->assertStatus(200);
         $passResponse->assertSee('John Doe');
-        $passResponse->assertSee('Progres Stempel Digital');
+        $passResponse->assertSee('Stempel Digital Dikumpulkan');
+    }
+
+    public function test_re_registration_with_same_email_returns_existing_pass(): void
+    {
+        $visitor = Visitor::create([
+            'qr_code_id' => (string) \Illuminate\Support\Str::uuid(),
+            'name'       => 'Jane Existing',
+            'email'      => 'jane@example.com',
+            'phone'      => '081299998888',
+        ]);
+
+        $response = $this->post(route('visitor.register.submit'), [
+            'name'  => 'Jane Existing',
+            'email' => 'jane@example.com',
+            'phone' => '081299998888',
+        ]);
+
+        $response->assertRedirect(route('visitor.pass', ['uuid' => $visitor->qr_code_id]));
+        $this->assertEquals(1, Visitor::where('email', 'jane@example.com')->count());
     }
 
     public function test_tenant_can_scan_visitor_and_prevents_duplicate_scan(): void
@@ -46,7 +65,7 @@ class ExhibitionSystemTest extends TestCase
         $visitor = Visitor::create([
             'qr_code_id' => (string) \Illuminate\Support\Str::uuid(),
             'name'       => 'Jane Doe',
-            'email'      => 'jane@example.com',
+            'email'      => 'janedoe@example.com',
             'phone'      => '08987654321',
         ]);
 
@@ -69,5 +88,19 @@ class ExhibitionSystemTest extends TestCase
 
         $duplicateResponse->assertStatus(409);
         $duplicateResponse->assertJson(['success' => false, 'status_code' => 'ALREADY_SCANNED']);
+    }
+
+    public function test_tenant_can_export_leads(): void
+    {
+        $tenantUser = User::factory()->create(['role' => 'tenant']);
+        $tenant = Tenant::create([
+            'user_id'      => $tenantUser->id,
+            'tenant_name'  => 'Export Test Tenant',
+            'booth_number' => 'B-99',
+        ]);
+
+        $responseCsv = $this->actingAs($tenantUser)->get(route('tenant.export', ['format' => 'csv']));
+        $responseCsv->assertStatus(200);
+        $responseCsv->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
 }

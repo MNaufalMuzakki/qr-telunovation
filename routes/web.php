@@ -61,7 +61,7 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Super Admin Routes (DILINDUNGI MIDDLEWARE SUPER ADMIN)
+    | Super Admin Routes (DILINDUNGI MIDDLEWARE SUPER ADMIN - FULL CRUD & INSPECTION)
     |--------------------------------------------------------------------------
     */
     Route::prefix('admin')->name('admin.')->middleware(['admin'])->group(function () {
@@ -69,9 +69,17 @@ Route::middleware(['auth'])->group(function () {
         
         // Manajemen Tenant & Kode Akses
         Route::get('/tenants', [AdminController::class, 'tenantsIndex'])->name('tenants.index');
+        Route::get('/tenants/{tenant}/leads', [AdminController::class, 'tenantLeads'])->name('tenants.leads');
         Route::post('/tenants', [AdminController::class, 'storeTenant'])->name('tenants.store');
+        Route::delete('/tenants/{id}', [AdminController::class, 'deleteTenant'])->name('tenants.delete');
         Route::post('/tenant-codes', [AdminController::class, 'storeTenantCode'])->name('tenant_codes.store');
         Route::delete('/tenant-codes/{id}', [AdminController::class, 'deleteTenantCode'])->name('tenant_codes.delete');
+
+        // Master Data Pengunjung (CRUD Visitor)
+        Route::get('/visitors', [AdminController::class, 'visitorsIndex'])->name('visitors.index');
+        Route::put('/visitors/{id}', [AdminController::class, 'updateVisitor'])->name('visitors.update');
+        Route::delete('/visitors/{id}', [AdminController::class, 'deleteVisitor'])->name('visitors.delete');
+        Route::delete('/visits/{id}', [AdminController::class, 'deleteVisit'])->name('visits.delete');
 
         // Redemption Station
         Route::get('/redemption', [AdminController::class, 'redemptionStation'])->name('redemption');

@@ -25,6 +25,9 @@
                         <x-nav-link :href="route('admin.tenants.index')" :active="request()->routeIs('admin.tenants.*')">
                             {{ __('Kelola Tenant') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('admin.visitors.index')" :active="request()->routeIs('admin.visitors.*')">
+                            {{ __('Data Pengunjung') }}
+                        </x-nav-link>
                         <x-nav-link :href="route('admin.redemption')" :active="request()->routeIs('admin.redemption*')">
                             {{ __('Redemption Station') }}
                         </x-nav-link>

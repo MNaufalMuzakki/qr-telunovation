@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TenantLeadsExport;
 use App\Models\Tenant;
 use App\Models\TenantAccessCode;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AdminController extends Controller
 {
@@ -51,6 +53,119 @@ class AdminController extends Controller
         $accessCodes = TenantAccessCode::with('usedBy')->latest()->get();
 
         return view('admin.tenants', compact('tenants', 'accessCodes'));
+    }
+
+    /**
+     * Lihat Dashboard Leads milik Tenant Spesifik (Super Admin View).
+     */
+    public function tenantLeads(Request $request, $tenantId)
+    {
+        $tenant = Tenant::with('user')->findOrFail($tenantId);
+        $search = $request->query('q');
+
+        $visitsQuery = $tenant->visits()
+            ->with('visitor')
+            ->latest('scanned_at');
+
+        if ($search) {
+            $visitsQuery->whereHas('visitor', function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $visits = $visitsQuery->paginate(15)->withQueryString();
+        $totalLeads = $tenant->visits()->count();
+
+        return view('admin.tenant_leads', compact('tenant', 'visits', 'totalLeads', 'search'));
+    }
+
+    /**
+     * Hapus Tenant dan Akun Penggunanya.
+     */
+    public function deleteTenant($id)
+    {
+        $tenant = Tenant::findOrFail($id);
+        $user = $tenant->user;
+
+        DB::transaction(function () use ($tenant, $user) {
+            $tenant->delete();
+            if ($user) {
+                $user->delete();
+            }
+        });
+
+        return redirect()->route('admin.tenants.index')->with('success', 'Akun Tenant berhasil dihapus!');
+    }
+
+    /**
+     * Kelola Seluruh Data Pengunjung (CRUD Visitor oleh Admin).
+     */
+    public function visitorsIndex(Request $request)
+    {
+        $search = $request->query('q');
+
+        $visitorsQuery = Visitor::with(['visits.tenant'])
+            ->withCount('visits')
+            ->latest();
+
+        if ($search) {
+            $visitorsQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $visitors = $visitorsQuery->paginate(15)->withQueryString();
+
+        return view('admin.visitors', compact('visitors', 'search'));
+    }
+
+    /**
+     * Update Data Pengunjung oleh Admin.
+     */
+    public function updateVisitor(Request $request, $id)
+    {
+        $visitor = Visitor::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'  => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:visitors,email,' . $id],
+            'phone' => ['required', 'string', 'max:50'],
+        ]);
+
+        $visitor->update([
+            'name'  => trim($validated['name']),
+            'email' => strtolower(trim($validated['email'])),
+            'phone' => trim($validated['phone']),
+        ]);
+
+        return back()->with('success', "Data pengunjung {$visitor->name} berhasil diperbarui!");
+    }
+
+    /**
+     * Hapus Pengunjung beserta Seluruh Data Scan/Stempelnya.
+     */
+    public function deleteVisitor($id)
+    {
+        $visitor = Visitor::findOrFail($id);
+        $name = $visitor->name;
+        $visitor->delete();
+
+        return back()->with('success', "Data pengunjung \"{$name}\" berhasil dihapus!");
+    }
+
+    /**
+     * Hapus Satu Record Scan / Visit.
+     */
+    public function deleteVisit($id)
+    {
+        $visit = Visit::findOrFail($id);
+        $visit->delete();
+
+        return back()->with('success', 'Record scan pengunjung berhasil dihapus!');
     }
 
     /**

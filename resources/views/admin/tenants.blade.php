@@ -201,7 +201,8 @@
                                 <th class="px-6 py-4">Booth</th>
                                 <th class="px-6 py-4">Nama Tenant</th>
                                 <th class="px-6 py-4">Email Login</th>
-                                <th class="px-6 py-4 text-center">Total Lead / Visitor Scanned</th>
+                                <th class="px-6 py-4 text-center">Total Leads Scanned</th>
+                                <th class="px-6 py-4 text-right">Aksi Super Admin</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -222,10 +223,22 @@
                                             {{ $t->visits_count }} Visitor
                                         </span>
                                     </td>
+                                    <td class="px-6 py-4 text-right space-x-2">
+                                        <a href="{{ route('admin.tenants.leads', $t->id) }}" class="inline-block px-3 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 rounded-lg text-xs font-bold transition">
+                                            Lihat Leads &rarr;
+                                        </a>
+                                        <form action="{{ route('admin.tenants.delete', $t->id) }}" method="POST" onsubmit="return confirm('Hapus tenant ini beserta akun loginsnya?');" class="inline-block">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-rose-600 hover:text-rose-800 font-semibold hover:underline">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-8 text-center text-slate-400 italic">
+                                    <td colspan="5" class="px-6 py-8 text-center text-slate-400 italic">
                                         Belum ada tenant yang terdaftar.
                                     </td>
                                 </tr>

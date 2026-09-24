@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Models\TenantAccessCode;
 use App\Models\User;
 use App\Models\Visit;
 use App\Models\Visitor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AdminController extends Controller
@@ -41,16 +43,18 @@ class AdminController extends Controller
     }
 
     /**
-     * Halaman Manajemen Tenant (Daftar & Form Tambah Tenant).
+     * Halaman Manajemen Tenant (Daftar Tenant & Manajemen Kode Akses).
      */
     public function tenantsIndex()
     {
         $tenants = Tenant::with('user')->withCount('visits')->latest()->paginate(10);
-        return view('admin.tenants', compact('tenants'));
+        $accessCodes = TenantAccessCode::with('usedBy')->latest()->get();
+
+        return view('admin.tenants', compact('tenants', 'accessCodes'));
     }
 
     /**
-     * Buat akun tenant baru beserta relasi ke booth.
+     * Buat akun tenant baru secara manual oleh Admin.
      */
     public function storeTenant(Request $request)
     {
@@ -77,7 +81,42 @@ class AdminController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Akun Tenant dan data Booth berhasil didaftarkan!');
+        return back()->with('success', 'Akun Tenant dan data Booth berhasil didaftarkan oleh Admin!');
+    }
+
+    /**
+     * Buat Kode Akses Kredensial Tenant Baru.
+     */
+    public function storeTenantCode(Request $request)
+    {
+        $request->validate([
+            'code'         => ['nullable', 'string', 'max:50', 'unique:tenant_access_codes,code'],
+            'booth_number' => ['nullable', 'string', 'max:50'],
+            'notes'        => ['nullable', 'string', 'max:255'],
+        ], [
+            'code.unique' => 'Kode Akses ini sudah pernah dibuat sebelumnya.',
+        ]);
+
+        $code = $request->code ? strtoupper(trim($request->code)) : 'BTP-' . strtoupper(Str::random(6));
+
+        TenantAccessCode::create([
+            'code'         => $code,
+            'booth_number' => $request->booth_number ? strtoupper(trim($request->booth_number)) : null,
+            'notes'        => $request->notes,
+        ]);
+
+        return back()->with('success', "Kode Akses Tenant [{$code}] berhasil dibuat!");
+    }
+
+    /**
+     * Hapus Kode Akses Tenant.
+     */
+    public function deleteTenantCode($id)
+    {
+        $accessCode = TenantAccessCode::findOrFail($id);
+        $accessCode->delete();
+
+        return back()->with('success', 'Kode Akses Tenant berhasil dihapus!');
     }
 
     /**
@@ -89,39 +128,37 @@ class AdminController extends Controller
         $visitor = null;
 
         if ($searchUuid) {
-            $visitor = Visitor::where('qr_code_id', trim($searchUuid))
-                ->with(['visits.tenant'])
-                ->withCount('visits')
+            $visitor = Visitor::with(['visits.tenant'])
+                ->where('qr_code_id', $searchUuid)
                 ->first();
         }
 
-        return view('admin.redemption', compact('visitor', 'searchUuid'));
+        $minStampsRequired = 3;
+
+        return view('admin.redemption', compact('visitor', 'searchUuid', 'minStampsRequired'));
     }
 
     /**
-     * Eksekusi klaim hadiah bagi pengunjung yang memenuhi syarat stempel.
+     * Eksekusi klaim reward untuk pengunjung.
      */
     public function claimReward(Request $request)
     {
         $request->validate([
-            'qr_code_id' => ['required', 'uuid'],
+            'visitor_id' => 'required|exists:visitors,id',
         ]);
 
-        $visitor = Visitor::where('qr_code_id', $request->input('qr_code_id'))
-            ->withCount('visits')
-            ->firstOrFail();
+        $visitor = Visitor::withCount('visits')->findOrFail($request->visitor_id);
 
         if ($visitor->is_reward_claimed) {
             return back()->with('error', 'Hadiah untuk pengunjung ini sudah pernah diklaim sebelumnya!');
         }
 
-        // Minimal 5 stempel untuk klaim
-        if ($visitor->visits_count < 5) {
-            return back()->with('error', "Stempel belum mencukupi. Pengunjung baru mengumpulkan {$visitor->visits_count} dari minimal 5 stempel.");
+        if ($visitor->visits_count < 3) {
+            return back()->with('error', 'Jumlah stempel pengunjung belum mencukupi (minimal 3 stempel)!');
         }
 
         $visitor->update(['is_reward_claimed' => true]);
 
-        return back()->with('success', "Selamat! Hadiah berhasil diserahkan kepada {$visitor->name}. Status hadiah telah ditandai.");
+        return back()->with('success', "Selamat! Hadiah berhasil diklaim untuk pengunjung {$visitor->name}.");
     }
 }

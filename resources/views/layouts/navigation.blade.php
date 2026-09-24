@@ -5,8 +5,14 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('tenant.dashboard') }}" class="font-black text-lg text-indigo-600 tracking-tight">
-                        TELUNOVATION
+                    <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('tenant.dashboard') }}" class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-red-700 text-white font-black text-xs flex items-center justify-center shadow-sm">
+                            TelU
+                        </div>
+                        <div>
+                            <span class="font-black text-base text-red-800 tracking-tight leading-none block">TELUNOVATION</span>
+                            <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Bandung Techno Park</span>
+                        </div>
                     </a>
                 </div>
 

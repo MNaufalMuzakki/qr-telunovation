@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Tenant;
+use App\Models\TenantAccessCode;
 use App\Models\User;
 use App\Models\Visitor;
 use Illuminate\Database\Seeder;
@@ -77,7 +78,27 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 5. Visitor Dummy untuk demonstrasi awal
+        // 5. Seed Kode Akses Kredensial Tenant Siap Pakai
+        $defaultCodes = [
+            ['code' => 'BTP-A01', 'booth_number' => 'A-01', 'notes' => 'Kode Booth A-01'],
+            ['code' => 'BTP-B02', 'booth_number' => 'B-02', 'notes' => 'Kode Booth B-02'],
+            ['code' => 'BTP-C03', 'booth_number' => 'C-03', 'notes' => 'Kode Booth C-03'],
+            ['code' => 'BTP2026', 'booth_number' => 'MASTER', 'notes' => 'Kode Master Tenant TelU BTP'],
+            ['code' => 'TELU-EXHIBITION', 'booth_number' => 'GLOBAL', 'notes' => 'Kode Umum Pendaftaran Booth'],
+        ];
+
+        foreach ($defaultCodes as $item) {
+            TenantAccessCode::firstOrCreate(
+                ['code' => $item['code']],
+                [
+                    'booth_number' => $item['booth_number'],
+                    'notes'        => $item['notes'],
+                    'is_used'      => false,
+                ]
+            );
+        }
+
+        // 6. Visitor Dummy untuk demonstrasi awal
         if (Visitor::count() === 0) {
             Visitor::create([
                 'qr_code_id'        => (string) Str::uuid(),

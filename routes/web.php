@@ -28,11 +28,12 @@ Route::post('/tenant/register', [TenantRegistrationController::class, 'register'
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated Routes: Multi-Role Dashboard Redirector
+| Authenticated Routes: Multi-Role Dashboard Redirector & Protected Routes
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
 
+    // Redirector otomatis berdasarkan Role
     Route::get('/dashboard', function () {
         if (auth()->user()->isAdmin()) {
             return redirect()->route('admin.dashboard');
@@ -42,10 +43,10 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Tenant Routes (Exhibitor / Booth)
+    | Tenant Routes (DILINDUNGI MIDDLEWARE TENANT)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('tenant')->name('tenant.')->group(function () {
+    Route::prefix('tenant')->name('tenant.')->middleware(['tenant'])->group(function () {
         Route::get('/dashboard', [TenantDashboardController::class, 'index'])->name('dashboard');
         Route::get('/export', [TenantDashboardController::class, 'export'])->name('export');
         
@@ -60,10 +61,10 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Super Admin Routes (Panitia Event TelU BTP)
+    | Super Admin Routes (DILINDUNGI MIDDLEWARE SUPER ADMIN)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('admin')->name('admin.')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['admin'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         
         // Manajemen Tenant & Kode Akses
